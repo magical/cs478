@@ -3,6 +3,10 @@
 #include <string>
 #include "zmq.hpp"
 
+extern "C" {
+#include "miracl.h"
+}
+
 int main() {
 	zmq::context_t context;
 	zmq::socket_t socket(context, zmq::socket_type::req);
