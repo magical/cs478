@@ -63,7 +63,9 @@ bool valid(string secret, time_t t, string msg, string puzzle) {
 	shs256_init(&sh);
 	shs256_process_string(&sh, output);
 	shs256_hash(&sh, &output[0]);
-	return output == puzzle;
+
+	string puzhash = hash(puzzle);
+	return output == puzhash;
 }
 
 string ztostring(zmq::message_t &zmsg) {

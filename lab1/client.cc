@@ -74,6 +74,9 @@ int main() {
 		encode(puz, msg.data());
 		memmove((char*)msg.data()+MESSAGE_LENGTH, &line[0], line.size());
 
+		string debug((char*)msg.data(), msg.size());
+		std::cout << hex(debug) << "\n";
+
 		socket.send(msg);
 		socket.recv(&resp);
 	}
