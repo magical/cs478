@@ -23,15 +23,16 @@ int main() {
 	socket.connect("tcp://127.0.0.1:7000");
 
 	for (;;) {
-		string s;
-		std::getline(std::cin, s);
+		string line;
+		std::getline(std::cin, line);
 		if (!std::cin) {
 			break;
 		}
 
 		// send a request to the server
-		zmq::message_t msg(s.size());
-		memmove(msg.data(), &s[0], s.size());
+		zmq::message_t msg(line.size()+1);
+		((char*)msg.data())[0] = 0;
+		memmove((char*)msg.data()+1, &line[0], line.size());
 		socket.send(msg);
 
 		zmq::message_t resp;
@@ -65,6 +66,16 @@ int main() {
 
 		string solution = solve(puz);
 		std::cout << hex(solve(puz)) << "\n";
+
+		puz.puzzle = solution;
+
+		msg.rebuild(MESSAGE_LENGTH + line.size());
+		((char*)msg.data())[0] = 2;
+		encode(puz, msg.data());
+		memmove((char*)msg.data()+MESSAGE_LENGTH, &line[0], line.size());
+
+		socket.send(msg);
+		socket.recv(&resp);
 	}
 
 	return 0;

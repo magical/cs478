@@ -10,6 +10,9 @@ extern "C" {
 
 using std::string;
 
+const int NBITS = 8;
+zmq::message_t empty;
+
 std::string tostring(uint64_t t) {
 	std::string s(8, '0');
 	s[0] = (char)(t & 0xff);
@@ -39,12 +42,16 @@ Puzzle genpuzzle(string secret, time_t t, string msg) {
 	// generate goal
 	puz.goal = hash(output);
 
-	puz.bits = 8;
+	// clear low bits
+	setbits(puz.puzzle, 0, NBITS);
+
+	puz.t = t;
+	puz.bits = NBITS;
 
 	return puz;
 }
 
-string check(string secret, time_t t, string msg, string puzzle) {
+bool valid(string secret, time_t t, string msg, string puzzle) {
 	string output(32, '0');
 	sha256 sh;
 	shs256_init(&sh);
@@ -52,7 +59,11 @@ string check(string secret, time_t t, string msg, string puzzle) {
 	shs256_process_string(&sh, tostring(t));
 	shs256_process_string(&sh, msg);
 	shs256_hash(&sh, &output[0]);
-	return output;
+
+	shs256_init(&sh);
+	shs256_process_string(&sh, output);
+	shs256_hash(&sh, &output[0]);
+	return output == puzzle;
 }
 
 string ztostring(zmq::message_t &zmsg) {
@@ -70,38 +81,52 @@ int main() {
 	string secret = "client secret";
 
 	for (;;) {
-		zmq::message_t msg;
-		socket.recv(&msg);
+		zmq::message_t req;
+		socket.recv(&req);
 
 		// read message
-		auto s = std::string(reinterpret_cast<char*>(msg.data()), msg.size());
-		std::cout << s << "\n";
+		auto s = std::string(reinterpret_cast<char*>(req.data()), req.size());
+		//std::cout << s << "\n";
 
 		// does it contain a response to a puzzle?
 		// if so, check
 		// otherwise, generate a new puzzle
-		if (s.at(0) == 1) {
-			// 1 | solution | goal | nbits | message
+		if (s.at(0) == 2) {
+			// 2 | solution | goal | t | nbits | message
+			Puzzle puz = parse(s);
+			if (!puz.err.empty()) {
+				// invalid message size
+				goto error;
+			}
+			string message = s.substr(MESSAGE_LENGTH);
+			if (valid(secret, puz.t, message, puz.puzzle)) {
+				std::cout << message << "\n";
+			} else {
+				std::cout << "invalid\n";
+			}
+			socket.send(empty);
+		} else if (s.at(0) == 0) {
+			// 0 | message
 
-		} else {
 			// generate puzzle
 			time_t t = time(NULL);
-			Puzzle puz = genpuzzle(secret, t, ztostring(msg));
-			// clear low bits
-			puz.puzzle[0] = 0;
+			string message = s.substr(1);
+			Puzzle puz = genpuzzle(secret, t, message);
 
-			// 1 | puzzle | goal | nbits
-			zmq::message_t resp(1+32+32+8);
+			// 1 | puzzle | goal | t | nbits
+			zmq::message_t resp(MESSAGE_LENGTH);
 
 			reinterpret_cast<char*>(resp.data())[0] = 1;
-			memmove(resp.data()+1, &puz.puzzle[0], puz.puzzle.size());
-			memmove(resp.data()+33, &puz.goal[0], puz.goal.size());
-			string x(8, '0');
-			put64(x, puz.bits);
-			memmove(resp.data()+65, &x[0], x.size());
+			encode(puz, resp.data());
 
 			socket.send(resp);
+		} else {
+			goto error;
 		}
+		continue;
+	error:
+		std::cerr << "error\n";
+		socket.send(empty);
 	}
 
 	return 0;

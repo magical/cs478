@@ -1,6 +1,6 @@
+#include <cstring>
 #include <string>
 #include <sstream>
-#include <iostream>
 
 extern "C" {
 #include "miracl.h"
@@ -17,16 +17,16 @@ void shs256_process_string(sha256 *sh, string s) {
 }
 
 
-uint64_t get64(string &s) {
-	s.at(7); // bounds check
-	return ((((uint64_t)(unsigned char)s[0])) |
-		(((uint64_t)(unsigned char)s[1]) << 8) |
-		(((uint64_t)(unsigned char)s[2]) << 16) |
-		(((uint64_t)(unsigned char)s[3]) << 24) |
-		(((uint64_t)(unsigned char)s[4]) << 32) |
-		(((uint64_t)(unsigned char)s[5]) << 40) |
-		(((uint64_t)(unsigned char)s[6]) << 48) |
-		(((uint64_t)(unsigned char)s[7]) << 56));
+uint64_t get64(string &s, size_t off) {
+	s.at(off+7); // bounds check
+	return ((((uint64_t)(unsigned char)s[off+0])) |
+		(((uint64_t)(unsigned char)s[off+1]) << 8) |
+		(((uint64_t)(unsigned char)s[off+2]) << 16) |
+		(((uint64_t)(unsigned char)s[off+3]) << 24) |
+		(((uint64_t)(unsigned char)s[off+4]) << 32) |
+		(((uint64_t)(unsigned char)s[off+5]) << 40) |
+		(((uint64_t)(unsigned char)s[off+6]) << 48) |
+		(((uint64_t)(unsigned char)s[off+7]) << 56));
 }
 
 void put64(string &s, uint64_t t) {
@@ -45,9 +45,7 @@ void put64(string &s, uint64_t t) {
 void setbits(string &s, uint64_t x, int bits) {
 	uint64_t mask = (~0LLU) << bits;
 	uint64_t y = get64(s);
-	std::cerr << y << "\n";
 	y = (y & mask) | (x & (~mask));
-	std::cerr << y << "\n";
 	put64(s, y);
 }
 
@@ -71,9 +69,7 @@ string solve(Puzzle &puz) {
 	string output;
 	for (uint64_t i = 0; i < upper; i++) {
 		setbits(scratch, i, puz.bits);
-		//std::cerr << "guess: " << hex(scratch) << "\n";
 		output = hash(scratch);
-		//std::cerr << "outpu: " << hex(output) << "\n";
 		if (output == puz.goal) {
 			return scratch;
 		}
@@ -83,15 +79,26 @@ string solve(Puzzle &puz) {
 
 Puzzle parse(string &msg) {
 	Puzzle puz;
-	if (msg.size() == 1 + 32 + 32 + 8) {
+	if (msg.size() >= MESSAGE_LENGTH) {
 		puz.puzzle = msg.substr(1,32);
 		puz.goal = msg.substr(33,32);
-		string bitstr = msg.substr(65,8);
-		puz.bits = (int)get64(bitstr);
+		puz.t = get64(msg, 65);
+		puz.bits = (int)get64(msg, 73);
 	} else {
 		puz.err = "invalid message length";
 	}
 	return puz;
+}
+
+void encode(Puzzle puz, void* p) {
+	char* msg = reinterpret_cast<char*>(p);
+	std::memmove(&msg[1], &puz.puzzle[0], puz.puzzle.size());
+	std::memmove(&msg[33], &puz.goal[0], puz.goal.size());
+	string x(8, '0');
+	put64(x, puz.t);
+	std::memmove(&msg[65], &x[0], x.size());
+	put64(x, puz.bits);
+	std::memmove(&msg[73], &x[0], x.size());
 }
 
 string hex(string s) {
