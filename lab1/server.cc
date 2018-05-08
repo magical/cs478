@@ -6,13 +6,9 @@ extern "C" {
 #include "miracl.h"
 }
 
-using std::string;
+#include "puzzles.hpp"
 
-void shs256_process_string(sha256 *sh, string s) {
-	for (char c : s) {
-		shs_process(sh, (int)(unsigned char)c);
-	}
-}
+using std::string;
 
 std::string tostring(uint64_t t) {
 	std::string s(8, '0');
@@ -44,15 +40,6 @@ string check(string secret, time_t t, string msg, string puzzle) {
 	shs256_init(&sh);
 	shs256_process_string(&sh, secret);
 	shs256_process_string(&sh, tostring(t));
-	shs256_process_string(&sh, msg);
-	shs256_hash(&sh, &output[0]);
-	return output;
-}
-
-string hash(string msg) {
-	string output(32, '0');
-	sha256 sh;
-	shs256_init(&sh);
 	shs256_process_string(&sh, msg);
 	shs256_hash(&sh, &output[0]);
 	return output;
