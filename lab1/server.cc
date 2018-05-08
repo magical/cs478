@@ -39,7 +39,7 @@ Puzzle genpuzzle(string secret, time_t t, string msg) {
 	// generate goal
 	puz.goal = hash(output);
 
-	puz.bits = 4;
+	puz.bits = 8;
 
 	return puz;
 }

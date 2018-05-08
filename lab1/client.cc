@@ -62,6 +62,9 @@ int main() {
 		std::cout << hex(puz.puzzle) << "\n";
 		std::cout << hex(puz.goal) << "\n";
 		std::cout << puz.bits << "\n";
+
+		string solution = solve(puz);
+		std::cout << hex(solve(puz)) << "\n";
 	}
 
 	return 0;

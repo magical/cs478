@@ -1,5 +1,6 @@
 #include <string>
 #include <sstream>
+#include <iostream>
 
 extern "C" {
 #include "miracl.h"
@@ -18,33 +19,35 @@ void shs256_process_string(sha256 *sh, string s) {
 
 uint64_t get64(string &s) {
 	s.at(7); // bounds check
-	return (((uint64_t)(s[0])) |
-		((uint64_t)(s[1]) << 8) |
-		((uint64_t)(s[2]) << 16) |
-		((uint64_t)(s[3]) << 24) |
-		((uint64_t)(s[4]) << 32) |
-		((uint64_t)(s[5]) << 40) |
-		((uint64_t)(s[6]) << 48) |
-		((uint64_t)(s[7]) << 56));
+	return ((((uint64_t)(unsigned char)s[0])) |
+		(((uint64_t)(unsigned char)s[1]) << 8) |
+		(((uint64_t)(unsigned char)s[2]) << 16) |
+		(((uint64_t)(unsigned char)s[3]) << 24) |
+		(((uint64_t)(unsigned char)s[4]) << 32) |
+		(((uint64_t)(unsigned char)s[5]) << 40) |
+		(((uint64_t)(unsigned char)s[6]) << 48) |
+		(((uint64_t)(unsigned char)s[7]) << 56));
 }
 
 void put64(string &s, uint64_t t) {
 	s.at(7); // bounds check
-	s[0] = (char)(t & 0xff);
-	s[1] = (char)((t>>8) & 0xff);
-	s[2] = (char)((t>>16) & 0xff);
-	s[3] = (char)((t>>24) & 0xff);
-	s[4] = (char)((t>>32) & 0xff);
-	s[5] = (char)((t>>40) & 0xff);
-	s[6] = (char)((t>>48) & 0xff);
-	s[7] = (char)((t>>56) & 0xff);
+	s[0] = (unsigned char)(t & 0xff);
+	s[1] = (unsigned char)((t>>8) & 0xff);
+	s[2] = (unsigned char)((t>>16) & 0xff);
+	s[3] = (unsigned char)((t>>24) & 0xff);
+	s[4] = (unsigned char)((t>>32) & 0xff);
+	s[5] = (unsigned char)((t>>40) & 0xff);
+	s[6] = (unsigned char)((t>>48) & 0xff);
+	s[7] = (unsigned char)((t>>56) & 0xff);
 }
 
 // sets the first few bits of s to x
 void setbits(string &s, uint64_t x, int bits) {
 	uint64_t mask = (~0LLU) << bits;
 	uint64_t y = get64(s);
-	y = (y & mask) | x;
+	std::cerr << y << "\n";
+	y = (y & mask) | (x & (~mask));
+	std::cerr << y << "\n";
 	put64(s, y);
 }
 
@@ -68,7 +71,9 @@ string solve(Puzzle &puz) {
 	string output;
 	for (uint64_t i = 0; i < upper; i++) {
 		setbits(scratch, i, puz.bits);
+		//std::cerr << "guess: " << hex(scratch) << "\n";
 		output = hash(scratch);
+		//std::cerr << "outpu: " << hex(output) << "\n";
 		if (output == puz.goal) {
 			return scratch;
 		}
@@ -78,7 +83,6 @@ string solve(Puzzle &puz) {
 
 Puzzle parse(string &msg) {
 	Puzzle puz;
-	// TODO: don't abort
 	if (msg.size() == 1 + 32 + 32 + 8) {
 		puz.puzzle = msg.substr(1,32);
 		puz.goal = msg.substr(33,32);
