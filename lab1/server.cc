@@ -23,7 +23,10 @@ std::string tostring(uint64_t t) {
 	return s;
 }
 
-string genpuzzle(string secret, time_t t, string msg) {
+Puzzle genpuzzle(string secret, time_t t, string msg) {
+	Puzzle puz;
+
+	// generate puzzle
 	string output(32, '0');
 	sha256 sh;
 	shs256_init(&sh);
@@ -31,7 +34,14 @@ string genpuzzle(string secret, time_t t, string msg) {
 	shs256_process_string(&sh, tostring(t));
 	shs256_process_string(&sh, msg);
 	shs256_hash(&sh, &output[0]);
-	return output;
+	puz.puzzle = output;
+
+	// generate goal
+	puz.goal = hash(output);
+
+	puz.bits = 4;
+
+	return puz;
 }
 
 string check(string secret, time_t t, string msg, string puzzle) {
@@ -76,14 +86,20 @@ int main() {
 		} else {
 			// generate puzzle
 			time_t t = time(NULL);
-			string solution = genpuzzle(secret, t, ztostring(msg));
-			string puzzle = hash(puzzle);
-			puzzle[0] = 0;
+			Puzzle puz = genpuzzle(secret, t, ztostring(msg));
+			// clear low bits
+			puz.puzzle[0] = 0;
 
 			// 1 | puzzle | goal | nbits
 			zmq::message_t resp(1+32+32+8);
-			memset(resp.data(), 0, resp.size());
+
 			reinterpret_cast<char*>(resp.data())[0] = 1;
+			memmove(resp.data()+1, &puz.puzzle[0], puz.puzzle.size());
+			memmove(resp.data()+33, &puz.goal[0], puz.goal.size());
+			string x(8, '0');
+			put64(x, puz.bits);
+			memmove(resp.data()+65, &x[0], x.size());
+
 			socket.send(resp);
 		}
 	}
