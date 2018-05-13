@@ -51,7 +51,6 @@ int main() {
 			continue;
 		}
 
-		// TODO: solve puzzle
 		std::cout << "got puzzle\n";
 		string resp_str = ztostring(resp);
 		Puzzle puz = parse(resp_str);
