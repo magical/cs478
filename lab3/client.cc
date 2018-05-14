@@ -2,14 +2,14 @@
 #include <string>
 #include <vector>
 #include "zmq.hpp"
+#include "compress.hpp"
+#include "crypto.hpp"
 
 using std::string;
 using std::vector;
 
 string encrypt(string key, string msg) { return msg; }
-string compress(string msg) { return msg; }
 string hmac(string key, string msg) { return msg; }
-string hash(string msg) { return msg; }
 
 string key;
 string hashchain;
@@ -36,6 +36,10 @@ int main() {
 
 	items[1].fd = 0;
 	items[1].events = ZMQ_POLLIN;
+
+	std::cout << compress("") << "\n";
+	std::cout << compress("abc") << "\n";
+	std::cout << compress("aaaaaaaabbbbccd") << "\n";
 
 	for (;;) {
 		int r = zmq::poll(items, 2, 0);
