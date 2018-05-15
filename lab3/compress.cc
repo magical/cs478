@@ -31,6 +31,7 @@ string encode_node_list(const std::vector<Node*> &nodes);
 Node* build_tree(std::vector<Node*> nodes);
 codemap_t convert_tree(Node* tree);
 void walk_node(Node* node, string prefix, codemap_t &codes);
+void free_tree(Node* node);
 void writebits(string& s, const string &bits);
 
 unsigned char uch(char c) { return static_cast<unsigned char>(c); }
@@ -39,7 +40,9 @@ string decompress(const string &msg) {
 	size_t tree_length = get64(msg, 0);
 	auto nodes = read_node_list(msg.substr(8, tree_length));
 	Node *tree = build_tree(nodes);
-	return decode_message(tree, msg.substr(8 + tree_length));
+	string output = decode_message(tree, msg.substr(8 + tree_length));
+	free_tree(tree);
+	return output;
 }
 
 std::vector<Node*> read_node_list(const string &msg) {
@@ -178,6 +181,8 @@ string compress(const string &msg) {
 	// convert tree to codes
 	codemap_t codes = convert_tree(tree);
 
+	free_tree(tree);
+
 	// compress
 	string output;
 	output.resize(8);
@@ -190,6 +195,7 @@ string compress(const string &msg) {
 	}
 	bw.writebits(codes.at('\0')); // eof
 	bw.close();
+
 	return output;
 }
 
@@ -252,6 +258,14 @@ void walk_node(Node* node, string prefix, codemap_t &codes) {
 		walk_node(node->left, prefix + "0", codes);
 		walk_node(node->right, prefix + "1", codes);
 	}
+}
+
+void free_tree(Node* node) {
+	if (!node->leaf) {
+		free_tree(node->left);
+		free_tree(node->right);
+	}
+	delete node;
 }
 
 void test_decompress() {

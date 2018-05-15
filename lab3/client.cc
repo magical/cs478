@@ -71,6 +71,9 @@ int main() {
 
 	for (;;) {
 		int r = zmq::poll(items, 2, 0);
+		if (r < 0) {
+			perror("poll");
+		}
 
 		// when a messae arrives,
 		// queue the message
