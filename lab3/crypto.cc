@@ -79,9 +79,6 @@ string hmac(const string &key, const string msg)
 		throw new std::logic_error("key too large");
 	}
 
-	// deviation from standard: always hash the message
-	string msghash = hash(msg);
-
 	memset(K, 0, sizeof K);
 	memmove(K, &key[0], key.size());
 
@@ -92,13 +89,13 @@ string hmac(const string &key, const string msg)
 		shs256_process(&outer, c ^ OPAD);
 	}
 
-	for (char c : msghash) {
+	for (char c : msg) {
 		shs256_process(&inner, c);
 	}
 	shs256_hash(&inner, x);
 
 	for (char c : x) {
-		shs256_process(&inner, c);
+		shs256_process(&outer, c);
 	}
 	shs256_hash(&outer, x);
 

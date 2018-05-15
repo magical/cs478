@@ -69,6 +69,7 @@ int main() {
 	std::cout << compress("") << "\n";
 	std::cout << compress("abc") << "\n";
 	std::cout << compress("aaaaaaaabbbbccd") << "\n";
+	std::cout << hex(hmac(key, "hi")) << "\n";
 
 	for (;;) {
 		int r = zmq::poll(items, 2, 0);
