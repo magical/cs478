@@ -101,3 +101,23 @@ string hmac(const string &key, const string msg)
 
 	return std::string(x, sizeof x);
 }
+
+string xorkeystream(const string &key, const string &msg, string counter) {
+	// AES CTR
+	string output;
+	char keystream[16];
+
+	output.resize(msg.size());
+	aes a;
+	aes_init(&a, MR_ECB, key.size(), const_cast<char*>(&key[0]), NULL);
+	for (size_t i = 0; i < msg.size(); i++) {
+		if (i%16 == 0) {
+			memmove(keystream, &counter[0], sizeof keystream);
+			put64(counter, get64(counter)+1);
+			aes_encrypt(&a, keystream);
+		}
+		output[i] = msg.at(i) ^ keystream[i%16];
+	}
+	aes_end(&a);
+	return output;
+}

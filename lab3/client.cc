@@ -13,29 +13,14 @@ using std::vector;
 csprng rng;
 
 string encrypt(const string key, const string msg, string *iv_out) {
-	// AES CTR
-	string output;
+	// random initial counter
 	std::string counter(16, '\0');
-	char keystream[16];
-
 	for (int i = 0; i < 16; i++) {
 		counter[i] = strong_rng(&rng);
 	}
 	*iv_out = counter;
 
-	output.resize(msg.size());
-	aes a;
-	aes_init(&a, MR_ECB, key.size(), const_cast<char*>(&key[0]), NULL);
-	for (size_t i = 0; i < msg.size(); i++) {
-		if (i%16 == 0) {
-			memmove(keystream, &counter[0], sizeof keystream);
-			put64(counter, get64(counter)+1);
-			aes_encrypt(&a, keystream);
-		}
-		output[i] = msg.at(i) ^ keystream[i%16];
-	}
-	aes_end(&a);
-	return output;
+	return xorkeystream(key, msg, counter);
 }
 
 unsigned char key_bytes[] = {197, 48, 233, 58, 115, 6, 244, 205, 123, 253, 215, 37, 8, 36, 216, 170};
@@ -47,7 +32,9 @@ vector<string> messages;
 void save_message(std::string msg) {
 	std::string iv;
 	auto msg_compressed = compress(msg);
-	auto msg_encrypted = encrypt(key, msg_compressed, &iv);
+	//auto msg_encrypted = encrypt(key, msg_compressed, &iv);
+	auto msg_encrypted = encrypt(key, msg, &iv);
+	msg_encrypted = iv + msg_encrypted;
 	auto sig = hmac(key, msg_encrypted);
 	hashchain = hash(hashchain + sig);
 	key = hash(key);
