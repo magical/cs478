@@ -5,6 +5,8 @@
 #include "compress.hpp"
 #include "crypto.hpp"
 
+#include <sys/auxv.h>
+
 using std::string;
 using std::vector;
 
@@ -36,6 +38,8 @@ string encrypt(const string key, const string msg, string *iv_out) {
 	return output;
 }
 
+unsigned char key_bytes[] = {197, 48, 233, 58, 115, 6, 244, 205, 123, 253, 215, 37, 8, 36, 216, 170};
+
 string key;
 string hashchain;
 vector<string> messages;
@@ -51,8 +55,14 @@ void save_message(std::string msg) {
 }
 
 int main() {
-	char buf[1];
-	strong_init(&rng, 0, buf, 0);
+	unsigned long auxrandom = getauxval(AT_RANDOM);
+	if (auxrandom == 0) {
+		throw "couldn't seed rng";
+	}
+	std::cout << hex(string((char*)auxrandom, 16));
+	strong_init(&rng, 16, (char*)auxrandom, 0);
+
+	key.assign(reinterpret_cast<char*>(key_bytes), sizeof key_bytes);
 
 	zmq::context_t context;
 	zmq::socket_t socket(context, zmq::socket_type::rep);
