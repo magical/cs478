@@ -45,7 +45,7 @@ void setbits(string &s, uint64_t x, int bits) {
 	put64(s, y);
 }
 
-string hash(string msg) {
+string hash(const string msg) {
 	string output(32, '0');
 	sha256 sh;
 	shs256_init(&sh);
