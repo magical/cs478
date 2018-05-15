@@ -1,6 +1,7 @@
 #include <cstring>
 #include <string>
 #include <sstream>
+#include <stdexcept>
 
 #include "crypto.hpp"
 
@@ -53,6 +54,7 @@ string hash(const string msg) {
 	shs256_hash(&sh, &output[0]);
 	return output;
 }
+
 string hex(string s) {
 	std::stringstream out;
 	const char* hexdigits = "0123456789abcdef";
@@ -61,4 +63,44 @@ string hex(string s) {
 		out << hexdigits[c & 0xF];
 	}
 	return out.str();
+}
+
+string hmac(const string &key, const string msg)
+{
+	const int IPAD = 0x36;
+	const int OPAD = 0x5c;
+	string tag;
+	sha256 outer;
+	sha256 inner;
+	char x[256/8];
+	char K[512/8];
+
+	if (key.size() > sizeof K) {
+		throw new std::logic_error("key too large");
+	}
+
+	// deviation from standard: always hash the message
+	string msghash = hash(msg);
+
+	memset(K, 0, sizeof K);
+	memmove(K, &key[0], key.size());
+
+	shs256_init(&inner);
+	shs256_init(&outer);
+	for (char c : K) {
+		shs256_process(&inner, c ^ IPAD);
+		shs256_process(&outer, c ^ OPAD);
+	}
+
+	for (char c : msghash) {
+		shs256_process(&inner, c);
+	}
+	shs256_hash(&inner, x);
+
+	for (char c : x) {
+		shs256_process(&inner, c);
+	}
+	shs256_hash(&outer, x);
+
+	return std::string(x, sizeof x);
 }

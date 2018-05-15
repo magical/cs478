@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <stdexcept>
 #include "zmq.hpp"
 #include "compress.hpp"
 #include "crypto.hpp"
@@ -36,47 +35,6 @@ string encrypt(const string key, const string msg, string *iv_out) {
 	aes_end(&a);
 	return output;
 }
-
-string hmac(const string &key, const string msg)
-{
-	const int IPAD = 0x36;
-	const int OPAD = 0x5c;
-	string tag;
-	sha256 outer;
-	sha256 inner;
-	char x[256/8];
-	char K[512/8];
-
-	if (key.size() > sizeof K) {
-		throw new std::logic_error("key too large");
-	}
-
-	// deviation from standard: always hash the message
-	string msghash = hash(msg);
-
-	memset(K, 0, sizeof K);
-	memmove(K, &key[0], key.size());
-
-	shs256_init(&inner);
-	shs256_init(&outer);
-	for (char c : K) {
-		shs256_process(&inner, c ^ IPAD);
-		shs256_process(&outer, c ^ OPAD);
-	}
-
-	for (char c : msghash) {
-		shs256_process(&inner, c);
-	}
-	shs256_hash(&inner, x);
-
-	for (char c : x) {
-		shs256_process(&inner, c);
-	}
-	shs256_hash(&outer, x);
-
-	return std::string(x, sizeof x);
-}
-
 
 string key;
 string hashchain;

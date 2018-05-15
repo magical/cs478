@@ -14,3 +14,4 @@ void put64(std::string &s, uint64_t t);
 void setbits(std::string &s, uint64_t x, int bits);
 std::string hash(const std::string msg);
 std::string hex(std::string s);
+std::string hmac(const std::string &key, const std::string msg);
