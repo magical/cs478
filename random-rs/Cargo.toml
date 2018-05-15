@@ -4,5 +4,4 @@ version = "0.1.0"
 authors = ["Andrew Ekstedt <andrew.ekstedt@gmail.com>"]
 
 [dependencies]
-libc = "0.2"
 getopts = "0.2"
