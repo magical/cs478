@@ -125,7 +125,8 @@ public:
 	}
 
 	void writebits(const string& bits) {
-		for (char c : bits) {
+		for (size_t i = 0; i < bits.size(); i++) {
+			char c = bits[bits.size()-i-1];
 			unsigned bit = (c == '1');
 			this->bits += bit << n;
 			n++;
@@ -266,8 +267,4 @@ void free_tree(Node* node) {
 		free_tree(node->right);
 	}
 	delete node;
-}
-
-void test_decompress() {
-	decompress("");
 }
