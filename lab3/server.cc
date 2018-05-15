@@ -23,7 +23,7 @@ bool authenticate(string key, std::vector<string> messages, string fullsig) {
 	// TODO: update global hashchain
 }
 
-void decryptall(string key, std::vector<string> messages) {
+void decryptall(string key, std::vector<string> &messages) {
 	for (string &m_i : messages) {
 		auto iv = m_i.substr(0, 16);
 		auto ciphertext = m_i.substr(16);
@@ -49,8 +49,13 @@ int main() {
 		zmq::message_t msg;
 		socket.send(msg);
 		socket.recv(&msg);
-		auto s = std::string(reinterpret_cast<char*>(msg.data()), msg.size());
-		std::cout << hex(s) << "\n";
+		if (msg.size() > 0) {
+			auto s = string(reinterpret_cast<char*>(msg.data()), msg.size());
+			std::cout << hex(s) << "\n";
+			std::vector<string> messages = {s};
+			decryptall(key, messages);
+			std::cout << hex(messages[0]) << "\n";
+		}
 		sleep(1);
 	}
 
