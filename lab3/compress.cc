@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <string>
 #include <map>
+#include <iostream>
 #include "crypto.hpp"
 
 using std::string;
@@ -39,6 +40,7 @@ string decompress(const string &msg) {
 	size_t tree_length = get64(msg, 0);
 	auto nodes = read_node_list(msg.substr(8, tree_length));
 	Node *tree = build_tree(nodes);
+	convert_tree(tree);
 	return decode_message(tree, msg.substr(8 + tree_length));
 }
 
@@ -52,15 +54,16 @@ std::vector<Node*> read_node_list(const string &msg) {
 	// 1xxxxxxxx          =          0xxxxxxx
 	// 0xxxxxxxx 1yyyyyyy = 00xxxxxx xyyyyyyy
 	// etc
-	int value = 0;
+	char value = 0;
 	int count = 0;
 
 	for (char c : msg) {
 		if (state == 0) {
-			value = uch(c);
+			value = c;
+			count = 0;
 			state++;
 		} else if (state == 1) {
-			int x = uch(c);
+			unsigned x = uch(c);
 			count = (count << 7) + (x & 0x7f);
 			if (x >> 7) {
 				state = 0;
@@ -108,9 +111,43 @@ done:
 	return output;
 }
 
-bool compare_node_count(const Node *a, const Node *b) {
-	return a->count > b->count;
-}
+class BitWriter {
+	string *buffer;
+	uint64_t bits;
+	unsigned n;
+
+public:
+	BitWriter(string* buf) {
+		this->buffer = buf;
+		this->bits = 0;
+		this->n = 0;
+	}
+
+	void writebits(const string& bits) {
+		for (char c : bits) {
+			unsigned bit = (c == '1');
+			this->bits += bit << n;
+			n++;
+			flush();
+		}
+	}
+
+	void flush() {
+		while (n >= 8) {
+			buffer->push_back(this->bits & 0xFF);
+			n -= 8;
+		}
+	}
+
+	void close() {
+		flush();
+		if (n > 0) {
+			buffer->push_back(this->bits);
+		}
+		n = 0;
+	}
+};
+
 
 string compress(const string &msg) {
 	// Initialize list of nodes
@@ -148,10 +185,13 @@ string compress(const string &msg) {
 	output.resize(8);
 	put64(output, encoded_nodes.size());
 	output += encoded_nodes;
+
+	BitWriter bw(&output);
 	for (char c : msg) {
-		writebits(output, codes.at(c));
+		bw.writebits(codes.at(c));
 	}
-	writebits(output, codes.at('\0'));
+	bw.writebits(codes.at('\0')); // eof
+	bw.close();
 	return output;
 }
 
@@ -163,10 +203,15 @@ string encode_node_list(const std::vector<Node*> &nodes) {
 		auto count = n->count;
 		while (count > 0x7F) {
 			output.push_back(count & 0x7F);
+			count >>= 7;
 		}
 		output.push_back(count | 0x80);
 	}
 	return output;
+}
+
+bool compare_node_count(const Node *a, const Node *b) {
+	return a->count > b->count;
 }
 
 // build a tree from a node list, destrying it in the process
@@ -204,15 +249,12 @@ codemap_t convert_tree(Node* tree) {
 
 void walk_node(Node* node, string prefix, codemap_t &codes) {
 	if (node->leaf) {
+		std::cout << "codes[" << (node->value?string(1, node->value):"eof") << "] = " << prefix << ", " << node->count << "\n";
 		codes[node->value] = prefix;
 	} else {
 		walk_node(node->left, prefix + "0", codes);
 		walk_node(node->right, prefix + "1", codes);
 	}
-}
-
-void writebits(string& output, const string& bits) {
-	output += bits;
 }
 
 void test_decompress() {

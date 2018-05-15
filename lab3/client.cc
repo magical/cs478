@@ -46,7 +46,6 @@ int main() {
 	if (auxrandom == 0) {
 		throw "couldn't seed rng";
 	}
-	std::cout << hex(string((char*)auxrandom, 16));
 	strong_init(&rng, 16, (char*)auxrandom, 0);
 
 	key.assign(reinterpret_cast<char*>(key_bytes), sizeof key_bytes);
@@ -63,9 +62,11 @@ int main() {
 	items[1].fd = 0;
 	items[1].events = ZMQ_POLLIN;
 
-	std::cout << compress("") << "\n";
-	std::cout << compress("abc") << "\n";
-	std::cout << compress("aaaaaaaabbbbccd") << "\n";
+	std::cout << hex(compress("")) << "\n";
+	std::cout << hex(compress("abc")) << "\n";
+	std::cout << hex(compress("aaaaaaaabbbbccd")) << "\n";
+	std::cout << hex(compress("aaaaaaaabbbcc")) << "\n";
+	std::cout << decompress(compress("aaaaaaaabbbcc")) << "\n";
 	std::cout << hex(hmac(key, "hi")) << "\n";
 
 	for (;;) {
