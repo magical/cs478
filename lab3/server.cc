@@ -25,10 +25,14 @@ bool authenticate(string key, std::vector<string> messages, string fullsig) {
 
 void decryptall(string key, std::vector<string> &messages) {
 	for (string &m_i : messages) {
+		std::cout << "key:" << hex(key) << "\n";
 		auto iv = m_i.substr(0, 16);
 		auto ciphertext = m_i.substr(16);
 		auto compressed = decrypt(key, ciphertext, iv);
 		auto plaintext = decompress(compressed);
+		std::cout << "ct:" << hex(ciphertext) << "\n";
+		std::cout << "cx:" << hex(compressed) << "\n";
+		std::cout << "pt:" << hex(plaintext) << "\n";
 		m_i = plaintext;
 		key = hash(key);
 	}

@@ -32,8 +32,12 @@ vector<string> messages;
 void save_message(std::string msg) {
 	std::string iv;
 	auto msg_compressed = compress(msg);
-	//auto msg_encrypted = encrypt(key, msg_compressed, &iv);
-	auto msg_encrypted = encrypt(key, msg, &iv);
+	auto msg_encrypted = encrypt(key, msg_compressed, &iv);
+	std::cout << "key:" << hex(key) << "\n";
+	std::cout << "ct:" << hex(msg_encrypted) << "\n";
+	std::cout << "cx:" << hex(msg_compressed) << "\n";
+	std::cout << "pt:" << hex(msg) << "\n";
+	std::cout << "de:" << hex(decompress(msg_compressed)) << "\n";
 	msg_encrypted = iv + msg_encrypted;
 	auto sig = hmac(key, msg_encrypted);
 	hashchain = hash(hashchain + sig);
