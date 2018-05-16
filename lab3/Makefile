@@ -5,3 +5,4 @@ all: client server
 client server: crypto.o compress.o
 crypto.o: crypto.cc crypto.hpp
 big_test: big.o
+compress_test: compress.o crypto.o

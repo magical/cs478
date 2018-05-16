@@ -91,10 +91,14 @@ std::vector<Node*> read_node_list(const string &msg) {
 string decode_message(Node* tree, string msg) {
 	Node *cur = tree;
 	string output = "";
+	if (cur->leaf) {
+		// must be eof
+		return output;
+	}
 	for (char c : msg) {
 		for (int i = 0; i < 8; i++) {
 			unsigned bit = (uch(c)>>i) & 1U;
-			if (bit) {
+			if (bit == 0) {
 				cur = cur->left;
 			} else {
 				cur = cur->right;
@@ -125,10 +129,9 @@ public:
 	}
 
 	void writebits(const string& bits) {
-		for (size_t i = 0; i < bits.size(); i++) {
-			char c = bits[bits.size()-i-1];
+		for (char c : bits) {
 			unsigned bit = (c == '1');
-			this->bits += bit << n;
+			this->bits += (bit&1) << n;
 			n++;
 			flush();
 		}
@@ -137,6 +140,7 @@ public:
 	void flush() {
 		while (n >= 8) {
 			buffer->push_back(this->bits & 0xFF);
+			this->bits >>= 8;
 			n -= 8;
 		}
 	}
