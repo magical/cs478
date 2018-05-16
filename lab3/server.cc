@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <iostream>
+#include <stdexcept>
 #include "zmq.hpp"
 
 #include "crypto.hpp"
@@ -65,7 +66,7 @@ void handle_messages(Bundle bundle) {
 
 uint64_t get64(char* s, size_t off, size_t size) {
 	if (size < 8 || off > size-8) {
-		throw "out of bounds";
+		throw std::out_of_range("get64: out of bounds");
 	}
 	return ((((uint64_t)(unsigned char)s[off+0])) |
 		(((uint64_t)(unsigned char)s[off+1]) << 8) |
@@ -77,34 +78,55 @@ uint64_t get64(char* s, size_t off, size_t size) {
 		(((uint64_t)(unsigned char)s[off+7]) << 56));
 }
 
-Bundle read_bundle(char* data, size_t size) {
-	// 16 byte signature
-	// uint64   num messages
-	// _
-	// | uint64          length
-	// | bytes * length  contents
-	// -- * num messages
-	Bundle b;
-	const size_t min_size = 32 + 8;
-	if (size < min_size) {
-		b.err = "too small";
-		return b;
+// Decodes a list of strings. Raises std::out_of_rane on failure.
+// Data is transfered between client and server as a list of strings.
+// uint64   count
+// __
+// | uint64          length
+// | bytes[length]   contents
+// -- * count
+std::vector<string> read_string_vector(char* data, size_t size) {
+	std::vector<string> messages;
+	if (size < 8) {
+		throw std::out_of_range("too small");
 	}
-	b.sig = string(data, 32);
-	uint64_t n = get64(data, 32, size);
-	size_t pos = min_size;
-	if (n > 0) {
-		size_t length = get64(data, 40, size);
+	uint64_t n = get64(data, 0, size);
+	size_t pos = 8;
+	while (n -- > 0) {
+		std::cout << n << " " << pos << "\n";
+		if (!(8 <= size - pos)) {
+			throw std::out_of_range("length truncated");
+		}
+		size_t length = get64(data, pos, size);
+		std::cout << n << " " << pos << " " << length << "\n";
 		pos += 8;
 		if (length <= size - pos) {
 			string m = string(data+pos, length);
-			b.messages.push_back(m);
-			pos += size;
+			messages.push_back(m);
+			pos += length;
 		} else {
-			// error
-			b.err = "message too long";
+			throw std::out_of_range("message too long");
 		}
 	}
+	return messages;
+}
+
+Bundle read_bundle(char* data, size_t size) {
+	Bundle b;
+	std::vector<string> messages;
+	try {
+		messages = read_string_vector(data, size);
+	} catch (const std::out_of_range &e) {
+		b.err = e.what();
+		return b;
+	}
+	if (messages.size() < 1) {
+		b.err = "no signature";
+		return b;
+	}
+	b.sig = messages.at(0);
+	messages.erase(messages.begin());
+	b.messages = messages;
 	return b;
 }
 
@@ -125,16 +147,16 @@ int main() {
 		if (msg.size() > 0) {
 			auto s = string(reinterpret_cast<char*>(msg.data()), msg.size());
 			std::cout << hex(s) << "\n";
-			std::vector<string> messages = {s};
 			Bundle b = read_bundle((char*)msg.data(), msg.size());
 			if (!b.err.empty()) {
 				std::cerr << "error: " << b.err << "\n";
+			} else {
+				//handle_messages(state.key, messages);
+				std::cout << hex(b.sig)<<"\n";
+				std::cout << hex(b.messages[0])<<"\n";
+				handle_messages(b);
+				std::cout << hex(b.messages[0]) << "\n";
 			}
-			//handle_messages(state.key, messages);
-			std::cout << hex(b.sig)<<"\n";
-			std::cout << hex(b.messages[0])<<"\n";
-			handle_messages(b);
-			std::cout << hex(messages[0]) << "\n";
 		}
 		sleep(1);
 	}

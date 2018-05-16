@@ -45,6 +45,26 @@ void save_message(std::string msg) {
 	messages.push_back(msg_encrypted);
 }
 
+void write_string_vector(zmq::message_t &buf, const std::vector<string> messages) {
+	size_t size = 8;
+	for (const string &s : messages) {
+		size += 8 + s.size();
+	}
+	buf.rebuild(size);
+
+	string x(8, '\0');
+	put64(x, messages.size());
+
+	memmove(buf.data(), &x[0], x.size());
+	size_t pos = 8;
+	for (const string &s : messages) {
+		put64(x, s.size());
+		memmove((char*)buf.data()+pos+0, &x[0], x.size());
+		memmove((char*)buf.data()+pos+8, &s[0], s.size());
+		pos += 8 + s.size();
+	}
+}
+
 int main() {
 	unsigned long auxrandom = getauxval(AT_RANDOM);
 	if (auxrandom == 0) {
@@ -100,16 +120,15 @@ int main() {
 			socket.recv(&ignore);
 
 			if (!messages.empty()) {
-				string s = messages.back();
-				zmq::message_t msg(48 + s.size());
-
-				memset(msg.data(), 0, 48);
-				memmove(msg.data(), hashchain.data(), 32);
-				((unsigned char*)msg.data())[32] = 1;
-				((unsigned char*)msg.data())[40] = s.size();
-				memmove(msg.data()+48, s.data(), s.size());
+				vector<string> bundle;
+				bundle.push_back(hashchain);
+				for (string s : messages) {
+					bundle.push_back(s);
+				}
+				zmq::message_t msg;
+				write_string_vector(msg, bundle);
 				socket.send(msg);
-				messages.pop_back();
+				messages.clear();
 			} else {
 				zmq::message_t msg;
 				socket.send(msg);
