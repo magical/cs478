@@ -101,8 +101,13 @@ int main() {
 
 			if (!messages.empty()) {
 				string s = messages.back();
-				zmq::message_t msg(s.size());
-				memmove(msg.data(), s.data(), s.size());
+				zmq::message_t msg(48 + s.size());
+
+				memset(msg.data(), 0, 48);
+				memmove(msg.data(), hashchain.data(), 32);
+				((unsigned char*)msg.data())[32] = 1;
+				((unsigned char*)msg.data())[40] = s.size();
+				memmove(msg.data()+48, s.data(), s.size());
 				socket.send(msg);
 				messages.pop_back();
 			} else {
