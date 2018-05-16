@@ -11,15 +11,14 @@ string decrypt(const string key, const string msg, string iv) {
 	return xorkeystream(key, msg, iv);
 }
 
-bool authenticated(string key, std::vector<string> messages, string fullsig) {
-	string hashchain;
+string authenticate(string key, std::vector<string> messages, string hashchain) {
 	string sig;
 	for (string m : messages) {
 		sig = hmac(key, m); // TODO: append message index
 		hashchain = hash(hashchain + sig);
 		key = hash(key);
 	}
-	return hashchain == fullsig; // TODO: constant time comparison
+	return hashchain;
 }
 
 void decryptall(string key, std::vector<string> &messages, string *key_out) {
@@ -40,7 +39,7 @@ void decryptall(string key, std::vector<string> &messages, string *key_out) {
 
 struct State {
 	string key;
-	//string hashchain; // TODO
+	string hashchain;
 };
 
 State state;
@@ -52,12 +51,14 @@ struct Bundle {
 };
 
 void handle_messages(Bundle bundle) {
-	if (!authenticated(state.key, bundle.messages, bundle.sig)) {
+	string hashchain = authenticate(state.key, bundle.messages, state.hashchain);
+	if (hashchain != bundle.sig) { // TODO: constant time comparison
 		std::cerr << "error: could not authenticate\n";
 		//return;
 		// keep going for debugging purposes
+	} else {
+		state.hashchain = hashchain;
 	}
-	// TODO: update global hashchain?
 
 	decryptall(state.key, bundle.messages, &state.key);
 }
@@ -90,7 +91,7 @@ Bundle read_bundle(char* data, size_t size) {
 		return b;
 	}
 	b.sig = string(data, 32);
-	size_t n = get64(data, 32, size);
+	uint64_t n = get64(data, 32, size);
 	size_t pos = min_size;
 	if (n > 0) {
 		size_t length = get64(data, 40, size);
@@ -98,7 +99,7 @@ Bundle read_bundle(char* data, size_t size) {
 		if (length <= size - pos) {
 			string m = string(data+pos, length);
 			b.messages.push_back(m);
-			pos += 8 + size;
+			pos += size;
 		} else {
 			// error
 			b.err = "message too long";
