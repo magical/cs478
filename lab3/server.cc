@@ -108,6 +108,7 @@ string reconstruct_packets(std::vector<Packet> packets) {
 unsigned char key_bytes[] = {197, 48, 233, 58, 115, 6, 244, 205, 123, 253, 215, 37, 8, 36, 216, 170};
 
 int main() {
+	Miracl precision = 100;
 	state.key.assign(reinterpret_cast<char*>(key_bytes), sizeof key_bytes);
 
 	zmq::context_t context;

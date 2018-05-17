@@ -97,6 +97,7 @@ void write_packet(zmq::message_t *buf, const Packet& packet) {
 }
 
 int main() {
+	Miracl precision = 100;
 	unsigned long auxrandom = getauxval(AT_RANDOM);
 	if (auxrandom == 0) {
 		throw "couldn't seed rng";
