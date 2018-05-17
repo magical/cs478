@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 #include "zmq.hpp"
+#include "big.h"
 
 #include "crypto.hpp"
 #include "compress.hpp"

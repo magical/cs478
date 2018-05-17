@@ -445,7 +445,5 @@ extern Big strong_rand(csprng *,int,int);
 extern Big from_binary(int,char *);
 //extern int to_binary(const Big&,int,char *,BOOL);
 
-using namespace std;
-
 #endif
 

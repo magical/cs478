@@ -2,12 +2,13 @@
 #include <string>
 #include <vector>
 #include <unistd.h>
+#include <sys/auxv.h>
 #include "zmq.hpp"
+#include "big.h"
+
 #include "compress.hpp"
 #include "crypto.hpp"
 #include "packet.hpp"
-
-#include <sys/auxv.h>
 
 using std::string;
 using std::vector;
