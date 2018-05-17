@@ -106,7 +106,7 @@ std::vector<Packet> split_message(const std::string &s, int n, int t) {
 			}
 		}
 		pieces = dispersal(pieces, t);
-		for (int i = 0; i < n; i++) {
+		for (int i = 0; i < t; i++) {
 			packets[i].pieces.push_back(pieces.at(i));
 		}
 	}
@@ -116,7 +116,6 @@ std::vector<Packet> split_message(const std::string &s, int n, int t) {
 // reconstruct the original message out of packets
 // uses n-out-of-t redundancy
 // returns empty string if there are fewer than n packets
-// if there are fewer t
 string reconstruct_packets(std::vector<Packet> packets, int n) {
 	string output;
 	if (packets.size() == 0) {
@@ -138,10 +137,10 @@ string reconstruct_packets(std::vector<Packet> packets, int n) {
 	// compine the first piece from each packet
 	// then the second piece from each packet
 	// and so on
-	for (int i = 0; i < n; i++) {
+	for (int i = 0; i < len; i++) {
 		std::vector<string> pieces;
-		for (Packet& p : packets) {
-			pieces.push_back(p.pieces[i]);
+		for (int j = 0; j < n; j++) {
+			pieces.push_back(packets[j].pieces[i]);
 		}
 		output += recover(pieces, indices);
 	}

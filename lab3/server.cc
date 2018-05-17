@@ -114,7 +114,7 @@ int main() {
 		if (response.size() > 0) {
 			std::vector<Packet> packets;
 			// TODO: timeout
-			for (int i = 0; i < 4; i++) {
+			for (int i = 0; i < RabinT; i++) {
 				zmq::message_t msg;
 				sub.recv(&msg);
 				std::cout << "got packet\n";
@@ -126,7 +126,7 @@ int main() {
 				}
 			}
 
-			if (packets.size() >= 4) {
+			if (packets.size() >= RabinN) {
 				string reconstructed = reconstruct_packets(packets, RabinN);
 				std::cout << hex(reconstructed) << "\n";
 				Bundle b = read_bundle(&reconstructed[0], reconstructed.size());
