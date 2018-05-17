@@ -127,7 +127,7 @@ int main() {
 			}
 
 			if (packets.size() >= 4) {
-				string reconstructed = reconstruct_packets(packets);
+				string reconstructed = reconstruct_packets(packets, RabinN);
 				std::cout << hex(reconstructed) << "\n";
 				Bundle b = read_bundle(&reconstructed[0], reconstructed.size());
 				if (!b.err.empty()) {

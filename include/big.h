@@ -306,6 +306,7 @@ public:
 	}
     //friend int to_binary(const Big&,int,char *,BOOL justify=FALSE);
     friend Big modmult(const Big&,const Big&,const Big&);
+    friend Big modmultadd(const Big&,const Big&,const Big&, const Big&);
     friend Big mad(const Big&,const Big&,const Big&,const Big&,Big&);
     friend Big norm(const Big&);
     friend Big sqrt(const Big&);

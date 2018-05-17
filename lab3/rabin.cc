@@ -6,13 +6,16 @@
 using std::vector;
 using std::string;
 
-Big P; // 2^1024 + 643
+Big *P = nullptr; // 2^1024 + 643
 
 void initP() {
-	if (length(P) == 0) {
-		P = pow(Big(2), 1024) + 643;
+	if (P == nullptr) {
+		P = new Big();
+		*P = pow(Big(2), 1024) + 643;
 	}
 }
+
+void printmatrix(const vector<vector<Big>> &M);
 
 string bigtostring(const Big& v) {
 	string output(ChunkSize, '\0');
@@ -39,14 +42,14 @@ vector<string> dispersal(const vector<string> &input, int t) {
 	// we assume the message has already been broken into independent chunks of t elements
 	vector<string> output;
 	for (int i = 0; i < t; i++) {
-		Big m(1);
-		Big ii(i+1);
-		Big y(0);
+		Big v = 1;
+		Big ii = i+1;
+		Big y = 0;
 		for (int j = 0; j < l; j++) {
 			// m[i,j] = (i+1)**j mod P
 			// y = M[i] dot vec mod P
-			y += vec[j] * m;
-			m = modmult(m, ii, P);
+			y = modmultadd(v, vec[j], y, *P);
+			v = modmult(v, ii, *P);
 		}
 		output.push_back(bigtostring(y));
 	}
@@ -57,9 +60,9 @@ void cancel(vector<vector<Big>> &Mk, int k, int i, int l);
 
 // l-out-of-t recovery
 // input is an l-length vector
-// output is an l-length vector
+// output is the concatenation of all l output pieces
 // indices is the index of each input string
-vector<string> recover(const vector<string> &input, vector<int> indices) {
+string recover(const vector<string> &input, vector<int> indices) {
 	initP();
 
 	int l = input.size();
@@ -67,15 +70,17 @@ vector<string> recover(const vector<string> &input, vector<int> indices) {
 
 	// initialize augmented vandermonde matrix
 	for (int i = 0; i < l; i++) {
+		int index = indices.at(i);
 		for (int j = 0; j < l; j++) {
-			int index = indices.at(i);
-			M[i][j] = pow(Big(index), j, P);
+			M[i][j] = pow(Big(index), j, *P);
 		}
 
 		// convert input string to bignums
 		// and augment M
 		M[i][l] = from_binary(input[i].size(), const_cast<char*>(&input[i][0]));
 	}
+
+	//printmatrix(M);
 
 	// solve with gauss-jordan elimination
 	// make upper triangular
@@ -93,10 +98,10 @@ vector<string> recover(const vector<string> &input, vector<int> indices) {
 	}
 
 	// convert solution to bytes
-	vector<string> output;
+	string output;
 	for (int k = 0; k < l; k++) {
-		Big v = moddiv(M[k][l], M[k][k], P);
-		output.push_back(bigtostring(v));
+		Big v = moddiv(M[k][l], M[k][k], *P);
+		output += bigtostring(v);
 	}
 
 	return output;
@@ -104,9 +109,23 @@ vector<string> recover(const vector<string> &input, vector<int> indices) {
 
 // cancel row M[i] using row M[k]
 void cancel(vector<vector<Big>> &M, int k, int i, int l) {
-	Big d = moddiv(-M[i][k], M[k][k], P);
-	for (int j = 0; i < l+1; j++) {
-		M[i][j] = modmult(M[i][j] + M[k][j], d, P);
+	Big d = moddiv(*P-M[i][k], M[k][k], *P);
+	for (int j = 0; j < l+1; j++) {
+		// M_ij += d * M_kj  mod p
+		M[i][j] = modmultadd(d, M[k][j], M[i][j], *P);
 	}
+	//printmatrix(M);
 	assert (M[i][k].iszero());
+}
+
+void printmatrix(const vector<vector<Big>> &M) {
+	get_mip()->IOBASE = 10;
+	for (size_t i = 0; i < M.size(); i++) {
+		for (size_t j = 0; j < M[i].size(); j++) {
+			if (j != 0) { std::cerr << " "; }
+			std::cerr << M.at(i).at(j);
+		}
+		std::cerr << "\n";
+	}
+	std::cerr << "\n";
 }

@@ -120,6 +120,8 @@ Big from_binary(int len,char *ptr)
 
 Big modmult(const Big& b1,const Big& b2,const Big& m)
 {Big z; mad(b1.fn,b2.fn,b2.fn,m.fn,m.fn,z.fn); return z;}
+Big modmultadd(const Big& b1,const Big& b2,const Big& b3, const Big& m)
+{Big z; mad(b1.fn,b2.fn,b3.fn,m.fn,m.fn,z.fn); return z;}
 Big mad(const Big& b1,const Big& b2,const Big& b3,const Big& m,Big &r)
 {Big q; mad(b1.fn,b2.fn,b3.fn,m.fn,q.fn,r.fn); return q;}
 

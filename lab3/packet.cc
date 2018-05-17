@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include "packet.hpp"
 #include "crypto.hpp" // get64
+#include "rabin.hpp"
 
 using std::string;
 
@@ -65,9 +66,8 @@ Packet read_packet(zmq::message_t &msg) {
 		p.err = "no packet header";
 		return p;
 	}
-	string header = pieces.at(1);
+	string header = pieces.at(0);
 	pieces.erase(pieces.begin());
-
 	p.i = get64(header, 0);
 	p.l = get64(header, 8);
 	p.t = get64(header, 16);
@@ -76,50 +76,74 @@ Packet read_packet(zmq::message_t &msg) {
 }
 
 // Split a string into packets
-std::vector<Packet> split_message(const std::string &s, int n) {
-	std::vector<Packet> packets(n);
-	for (int i = 0; i < n; i++) {
-		packets[i].i = i;
+// using n-out-of-t redundancy
+// returns vector of t packets
+std::vector<Packet> split_message(const std::string &s, int n, int t) {
+	std::vector<Packet> packets(t);
+	for (int i = 0; i < t; i++) {
+		packets[i].i = i+1;
+		packets[i].l = n;
+		packets[i].t = t;
 	}
 
 	size_t pos = 0;
 	while (pos < s.size()) {
+		std::vector<string> pieces;
+		// get one chunk for each packet
+		// pad string with trailing zeros if necessary
 		for (int i = 0; i < n; i++) {
 			if (pos == s.size()) {
 				std::string x(ChunkSize, '\0');
-				packets[i].pieces.push_back(x);
+				pieces.push_back(x);
 			} else if (s.size() - pos < ChunkSize) {
 				std::string x = s.substr(pos);
 				x.resize(ChunkSize, '\0');
-				packets[i].pieces.push_back(x);
+				pieces.push_back(x);
 				pos = s.size();
 			} else {
-				packets[i].pieces.push_back(s.substr(pos, ChunkSize));
+				pieces.push_back(s.substr(pos, ChunkSize));
 				pos += ChunkSize;
 			}
+		}
+		pieces = dispersal(pieces, t);
+		for (int i = 0; i < n; i++) {
+			packets[i].pieces.push_back(pieces.at(i));
 		}
 	}
 	return packets;
 }
 
-string reconstruct_packets(std::vector<Packet> packets) {
+// reconstruct the original message out of packets
+// uses n-out-of-t redundancy
+// returns empty string if there are fewer than n packets
+// if there are fewer t
+string reconstruct_packets(std::vector<Packet> packets, int n) {
 	string output;
-	// TODO: apply RID
-	// take the first piece from each packet and smash them together
-	// and so on
 	if (packets.size() == 0) {
 		return output;
 	}
-	int n = packets[0].pieces.size();
+	if (n > packets.size()) {
+		return output;
+	}
+	int len = packets[0].pieces.size();
 	for (Packet& p : packets) {
-		if (p.pieces.size() != n) {
+		if (p.pieces.size() != len) {
 			throw std::out_of_range("packets do not have the same number of pieces");
 		}
 	}
+	std::vector<int> indices;
 	for (int i = 0; i < n; i++) {
+		indices.push_back(packets[i].i);
+	}
+	// compine the first piece from each packet
+	// then the second piece from each packet
+	// and so on
+	for (int i = 0; i < n; i++) {
+		std::vector<string> pieces;
 		for (Packet& p : packets) {
-			output += p.pieces[0];
+			pieces.push_back(p.pieces[i]);
 		}
+		output += recover(pieces, indices);
 	}
 	return output;
 }

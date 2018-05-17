@@ -163,7 +163,7 @@ int main() {
 				std::string full_message;
 				write_string_vector(&full_message, bundle);
 
-				std::vector<Packet> packets = split_message(full_message, 4);
+				std::vector<Packet> packets = split_message(full_message, RabinN, RabinT);
 				zmq::message_t msg;
 				for (const Packet &p : packets) {
 					write_packet(&msg, p);
