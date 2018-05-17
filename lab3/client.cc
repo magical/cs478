@@ -1,9 +1,11 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <unistd.h>
 #include "zmq.hpp"
 #include "compress.hpp"
 #include "crypto.hpp"
+#include "packet.hpp"
 
 #include <sys/auxv.h>
 
@@ -45,24 +47,53 @@ void save_message(std::string msg) {
 	messages.push_back(msg_encrypted);
 }
 
-void write_string_vector(zmq::message_t &buf, const std::vector<string> messages) {
+// do not use this function directly
+void _write_string_vector(char* buf, size_t size, const std::vector<string> messages) {
+	string x(8, '\0');
+	put64(x, messages.size());
+
+	memmove(buf, &x[0], x.size());
+	size_t pos = 8;
+	for (const string &s : messages) {
+		put64(x, s.size());
+		memmove(&buf[pos+0], &x[0], x.size());
+		memmove(&buf[pos+8], &s[0], s.size());
+		pos += 8 + s.size();
+	}
+}
+
+void write_string_vector(zmq::message_t *buf, const std::vector<string> messages) {
 	size_t size = 8;
 	for (const string &s : messages) {
 		size += 8 + s.size();
 	}
-	buf.rebuild(size);
+	buf->rebuild(size);
+	_write_string_vector((char*)buf->data(), size, messages);
+}
 
-	string x(8, '\0');
-	put64(x, messages.size());
-
-	memmove(buf.data(), &x[0], x.size());
-	size_t pos = 8;
+void write_string_vector(std::string *buf, const std::vector<string> messages) {
+	size_t size = 8;
 	for (const string &s : messages) {
-		put64(x, s.size());
-		memmove((char*)buf.data()+pos+0, &x[0], x.size());
-		memmove((char*)buf.data()+pos+8, &s[0], s.size());
-		pos += 8 + s.size();
+		size += 8 + s.size();
 	}
+	buf->resize(size);
+	_write_string_vector(&(*buf)[0], size, messages);
+}
+
+string str64(uint64_t t) {
+	string output(8, '\0');
+	put64(output, t);
+	return output;
+}
+
+void write_packet(zmq::message_t *buf, const Packet& packet) {
+	std::vector<string> pieces;
+	string header = str64(packet.i) + str64(packet.l) + str64(packet.t);
+	pieces.push_back(header);
+	for (const string& p : packet.pieces) {
+		pieces.push_back(p);
+	}
+	write_string_vector(buf, pieces);
 }
 
 int main() {
@@ -78,6 +109,9 @@ int main() {
 	zmq::socket_t socket(context, zmq::socket_type::rep);
 	socket.bind("tcp://127.0.0.1:7000");
 
+	zmq::socket_t pub(context, zmq::socket_type::pub);
+	pub.bind("tcp://127.0.0.1:37813");
+
 	zmq_pollitem_t items[2] = {};
 
 	items[0].socket = (void*)socket;
@@ -86,12 +120,7 @@ int main() {
 	items[1].fd = 0;
 	items[1].events = ZMQ_POLLIN;
 
-	std::cout << hex(compress("")) << "\n";
-	std::cout << hex(compress("abc")) << "\n";
-	std::cout << hex(compress("aaaaaaaabbbbccd")) << "\n";
-	std::cout << hex(compress("aaaaaaaabbbcc")) << "\n";
-	std::cout << decompress(compress("aaaaaaaabbbcc")) << "\n";
-	std::cout << hex(hmac(key, "hi")) << "\n";
+	//std::cout << hex(hmac(key, "hi")) << "\n";
 
 	for (;;) {
 		int r = zmq::poll(items, 2, 0);
@@ -99,7 +128,7 @@ int main() {
 			perror("poll");
 		}
 
-		// when a messae arrives,
+		// when a message arrives,
 		// queue the message
 		if (items[1].revents & ZMQ_POLLIN) {
 			if (!std::cin) {
@@ -117,21 +146,32 @@ int main() {
 			std::cout << "got a collection request\n";
 
 			zmq::message_t ignore;
+			zmq::message_t empty;
 			socket.recv(&ignore);
 
 			if (!messages.empty()) {
+				zmq::message_t response(1);
+				socket.send(response);
+
 				vector<string> bundle;
 				bundle.push_back(hashchain);
 				for (string s : messages) {
 					bundle.push_back(s);
 				}
+				std::string full_message;
+				write_string_vector(&full_message, bundle);
+
+				std::vector<Packet> packets = split_message(full_message, 4);
 				zmq::message_t msg;
-				write_string_vector(msg, bundle);
-				socket.send(msg);
+				for (const Packet &p : packets) {
+					write_packet(&msg, p);
+					pub.send(msg);
+					std::cout << "sent a packet\n";
+				}
+
 				messages.clear();
 			} else {
-				zmq::message_t msg;
-				socket.send(msg);
+				socket.send(empty);
 			}
 		}
 	}

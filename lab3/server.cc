@@ -5,6 +5,7 @@
 
 #include "crypto.hpp"
 #include "compress.hpp"
+#include "packet.hpp"
 
 using std::string;
 
@@ -44,14 +45,13 @@ struct State {
 };
 
 State state;
-
 struct Bundle {
 	string sig;
 	std::vector<string> messages;
 	string err;
 };
 
-void handle_messages(Bundle bundle) {
+void handle_messages(Bundle &bundle) {
 	string hashchain = authenticate(state.key, bundle.messages, state.hashchain);
 	if (hashchain != bundle.sig) { // TODO: constant time comparison
 		std::cerr << "error: could not authenticate\n";
@@ -62,53 +62,6 @@ void handle_messages(Bundle bundle) {
 	}
 
 	decryptall(state.key, bundle.messages, &state.key);
-}
-
-uint64_t get64(char* s, size_t off, size_t size) {
-	if (size < 8 || off > size-8) {
-		throw std::out_of_range("get64: out of bounds");
-	}
-	return ((((uint64_t)(unsigned char)s[off+0])) |
-		(((uint64_t)(unsigned char)s[off+1]) << 8) |
-		(((uint64_t)(unsigned char)s[off+2]) << 16) |
-		(((uint64_t)(unsigned char)s[off+3]) << 24) |
-		(((uint64_t)(unsigned char)s[off+4]) << 32) |
-		(((uint64_t)(unsigned char)s[off+5]) << 40) |
-		(((uint64_t)(unsigned char)s[off+6]) << 48) |
-		(((uint64_t)(unsigned char)s[off+7]) << 56));
-}
-
-// Decodes a list of strings. Raises std::out_of_rane on failure.
-// Data is transfered between client and server as a list of strings.
-// uint64   count
-// __
-// | uint64          length
-// | bytes[length]   contents
-// -- * count
-std::vector<string> read_string_vector(char* data, size_t size) {
-	std::vector<string> messages;
-	if (size < 8) {
-		throw std::out_of_range("too small");
-	}
-	uint64_t n = get64(data, 0, size);
-	size_t pos = 8;
-	while (n -- > 0) {
-		std::cout << n << " " << pos << "\n";
-		if (!(8 <= size - pos)) {
-			throw std::out_of_range("length truncated");
-		}
-		size_t length = get64(data, pos, size);
-		std::cout << n << " " << pos << " " << length << "\n";
-		pos += 8;
-		if (length <= size - pos) {
-			string m = string(data+pos, length);
-			messages.push_back(m);
-			pos += length;
-		} else {
-			throw std::out_of_range("message too long");
-		}
-	}
-	return messages;
 }
 
 Bundle read_bundle(char* data, size_t size) {
@@ -130,6 +83,28 @@ Bundle read_bundle(char* data, size_t size) {
 	return b;
 }
 
+string reconstruct_packets(std::vector<Packet> packets) {
+	string output;
+	// TODO: apply RID
+	// take the first piece from each packet and smash them together
+	// and so on
+	if (packets.size() == 0) {
+		return output;
+	}
+	int n = packets[0].pieces.size();
+	for (Packet& p : packets) {
+		if (p.pieces.size() != n) {
+			throw std::out_of_range("packets do not have the same number of pieces");
+		}
+	}
+	for (int i = 0; i < n; i++) {
+		for (Packet& p : packets) {
+			output += p.pieces[0];
+		}
+	}
+	return output;
+}
+
 unsigned char key_bytes[] = {197, 48, 233, 58, 115, 6, 244, 205, 123, 253, 215, 37, 8, 36, 216, 170};
 
 int main() {
@@ -139,23 +114,54 @@ int main() {
 	zmq::socket_t socket(context, zmq::socket_type::req);
 	socket.connect("tcp://localhost:7000");
 
+	zmq::socket_t sub(context, zmq::socket_type::sub);
+	sub.connect("tcp://127.0.0.1:37813");
+	sub.setsockopt(ZMQ_SUBSCRIBE, "", 0);
+
+	zmq::message_t empty;
+	zmq::message_t ignore;
+
 	for (;;) {
+		zmq::message_t response;
+
 		// send a request to the client
-		zmq::message_t msg;
-		socket.send(msg);
-		socket.recv(&msg);
-		if (msg.size() > 0) {
-			auto s = string(reinterpret_cast<char*>(msg.data()), msg.size());
-			std::cout << hex(s) << "\n";
-			Bundle b = read_bundle((char*)msg.data(), msg.size());
-			if (!b.err.empty()) {
-				std::cerr << "error: " << b.err << "\n";
-			} else {
-				//handle_messages(state.key, messages);
-				std::cout << hex(b.sig)<<"\n";
-				std::cout << hex(b.messages[0])<<"\n";
-				handle_messages(b);
-				std::cout << hex(b.messages[0]) << "\n";
+		socket.send(empty);
+		socket.recv(&response);
+
+		std::cout << "got response\n";
+
+		// wait for messages pieces to come in
+		if (response.size() > 0) {
+			std::vector<Packet> packets;
+			// TODO: timeout
+			for (int i = 0; i < 4; i++) {
+				zmq::message_t msg;
+				sub.recv(&msg);
+				std::cout << "got packet\n";
+				Packet p = read_packet(msg);
+				if (!p.err.empty()) {
+					std::cerr << "error: " << p.err << "\n";
+				} else {
+					packets.push_back(p);
+				}
+			}
+
+			if (packets.size() >= 4) {
+				string reconstructed = reconstruct_packets(packets);
+				std::cout << hex(reconstructed) << "\n";
+				Bundle b = read_bundle(&reconstructed[0], reconstructed.size());
+				if (!b.err.empty()) {
+					std::cerr << "error: " << b.err << "\n";
+				} else {
+					//handle_messages(state.key, messages);
+					//std::cout << hex(b.sig)<<"\n";
+					//std::cout << hex(b.messages[0])<<"\n";
+					handle_messages(b);
+					//std::cout << hex(b.messages[0])<<"\n";
+					for (const string &r : b.messages) {
+						std::cout << r << "\n";
+					}
+				}
 			}
 		}
 		sleep(1);

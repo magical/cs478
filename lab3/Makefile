@@ -2,7 +2,9 @@ CXXFLAGS:=-Wall
 CXXFLAGS+=-std=c++11 -I../include -ggdb -O1
 LDLIBS+=-lzmq ../lib/miracl.a
 all: client server
-client server: crypto.o compress.o
+client server: crypto.o compress.o packet.o
 crypto.o: crypto.cc crypto.hpp
+packet.o: packet.cc packet.hpp
+
 big_test: big.o
 compress_test: compress.o crypto.o

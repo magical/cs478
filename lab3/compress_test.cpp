@@ -14,6 +14,12 @@ bool printable(std::string s) {
 }
 
 int main() {
+	std::cout << hex(compress("")) << "\n";
+	std::cout << hex(compress("abc")) << "\n";
+	std::cout << hex(compress("aaaaaaaabbbbccd")) << "\n";
+	std::cout << hex(compress("aaaaaaaabbbcc")) << "\n";
+	std::cout << decompress(compress("aaaaaaaabbbcc")) << "\n";
+
 	for (;;) {
 		std::string line;
 		if (!std::getline(std::cin, line, '\n')) {
