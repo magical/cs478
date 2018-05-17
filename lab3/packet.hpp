@@ -21,3 +21,4 @@ struct Packet {
 std::vector<std::string> read_string_vector(char* data, size_t size);
 Packet read_packet(zmq::message_t &msg);
 std::vector<Packet> split_message(const std::string &s, int n);
+std::string reconstruct_packets(std::vector<Packet> packets);

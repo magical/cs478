@@ -21,7 +21,7 @@ uint64_t get64(char* s, size_t off, size_t size) {
 		(((uint64_t)(unsigned char)s[off+7]) << 56));
 }
 
-// Decodes a list of strings. Raises std::out_of_rane on failure.
+// Decodes a list of strings. Raises std::out_of_range on failure.
 // Data is transfered between client and server as a list of strings.
 // uint64   count
 // __
@@ -100,4 +100,26 @@ std::vector<Packet> split_message(const std::string &s, int n) {
 		}
 	}
 	return packets;
+}
+
+string reconstruct_packets(std::vector<Packet> packets) {
+	string output;
+	// TODO: apply RID
+	// take the first piece from each packet and smash them together
+	// and so on
+	if (packets.size() == 0) {
+		return output;
+	}
+	int n = packets[0].pieces.size();
+	for (Packet& p : packets) {
+		if (p.pieces.size() != n) {
+			throw std::out_of_range("packets do not have the same number of pieces");
+		}
+	}
+	for (int i = 0; i < n; i++) {
+		for (Packet& p : packets) {
+			output += p.pieces[0];
+		}
+	}
+	return output;
 }

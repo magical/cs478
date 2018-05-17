@@ -84,28 +84,6 @@ Bundle read_bundle(char* data, size_t size) {
 	return b;
 }
 
-string reconstruct_packets(std::vector<Packet> packets) {
-	string output;
-	// TODO: apply RID
-	// take the first piece from each packet and smash them together
-	// and so on
-	if (packets.size() == 0) {
-		return output;
-	}
-	int n = packets[0].pieces.size();
-	for (Packet& p : packets) {
-		if (p.pieces.size() != n) {
-			throw std::out_of_range("packets do not have the same number of pieces");
-		}
-	}
-	for (int i = 0; i < n; i++) {
-		for (Packet& p : packets) {
-			output += p.pieces[0];
-		}
-	}
-	return output;
-}
-
 unsigned char key_bytes[] = {197, 48, 233, 58, 115, 6, 244, 205, 123, 253, 215, 37, 8, 36, 216, 170};
 
 int main() {
