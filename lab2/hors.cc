@@ -1,36 +1,12 @@
 #include <string>
 #include <vector>
+#include "bitreader.hpp"
 
 using std::string;
 using std::vector;
 
 extern string random_bytes(size_t);
 extern string hash(string);
-
-// big-endian bit reader
-class BitReader {
-	string data;
-	size_t pos;
-	uint64_t bits;
-	int n;
-
-public:
-	BitReader(string data) : data(data), pos(0), bits(0), n(0) {}
-
-	uint64_t readbits(int howmany) {
-		uint64_t output;
-		while (n < howmany) {
-			bits <<= 8;
-			if (pos < data.size()) {
-				bits += (uint64_t)(unsigned char)data[pos];
-				pos++;
-			}
-		}
-		output = bits >> (n - howmany);
-		n -= howmany;
-		return output;
-	}
-};
 
 
 void hors_keygen(unsigned keysize, int t) {

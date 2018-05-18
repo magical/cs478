@@ -1,10 +1,10 @@
-
 #include <iostream>
 #include <vector>
 #include <string>
 #include <cstdint>
 #include <assert.h>
 //#include "crypto.hpp"
+#include "merkle.hpp"
 
 using std::vector;
 using std::string;
@@ -15,7 +15,7 @@ class Merkle {
 
 };
 
-bool ispoweroftwo(uint64_t x) {
+static bool ispoweroftwo(uint64_t x) {
 	return x != 0 && (x & (x-1)) == 0;
 }
 

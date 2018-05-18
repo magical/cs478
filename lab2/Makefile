@@ -1,6 +1,7 @@
 CXXFLAGS:=-Wall
 CXXFLAGS+=-std=c++11 -I../include -ggdb -O1
 LDLIBS+=-lzmq ../lib/miracl.a
-all: merkle.o hors.o
-merkle.o: merkle.cc merkle.hpp
-hors.o: hors.cc
+all: merkle.o hors.o pq.o
+merkle.o: merkle.cc merkle.hpp bitreader.hpp
+hors.o: hors.cc hors.hpp
+pq.o: pq.cc pq.hpp merkle.hpp bitreader.hpp
