@@ -2,6 +2,7 @@
 #include <vector>
 #include <stdexcept>
 #include <assert.h>
+#include "crypto.hpp"
 #include "merkle.hpp"
 #include "bitreader.hpp"
 #include "pq.hpp"
@@ -17,12 +18,6 @@ const int log2t = 10;
 static bool ispoweroftwo(uint64_t x) {
 	return x != 0 && (x & (x-1)) == 0;
 }
-
-extern string random_bytes(void);
-extern string hash(string);
-extern string str64(uint64_t);
-
-class BitReader;
 
 // Returns the root of a merkle tree,
 // where the leaves are generated implictly from a seed
@@ -85,7 +80,7 @@ static vector<string> pq_merkle_path(int v, string z, int len) {
 
 void pq_keygen(int d, PQPrivateKey *sk, PQPublicKey *pk) {
 	int st = 1;
-	auto z = random_bytes();
+	auto z = random_bytes(128/8);
 	auto root = pq_merkle_create(z, d*t);
 	*sk = PQPrivateKey(z, st, d);
 	*pk = PQPublicKey(root, d);

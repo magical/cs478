@@ -1,13 +1,10 @@
 #include <string>
 #include <vector>
+#include "crypto.hpp"
 #include "bitreader.hpp"
 
 using std::string;
 using std::vector;
-
-extern string random_bytes(size_t);
-extern string hash(string);
-
 
 void hors_keygen(unsigned keysize, int t) {
 	vector<string> xs;
