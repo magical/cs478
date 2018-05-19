@@ -9,3 +9,4 @@ std::string hash(const std::string msg);
 std::string hex(std::string s);
 std::string hmac(const std::string &key, const std::string msg);
 std::string random_bytes(int n);
+void init_rng();

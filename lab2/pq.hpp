@@ -7,6 +7,7 @@ struct PQPrivateKey {
 	int st;
 	int d;
 
+	PQPrivateKey() : st(0), d(0) {}
 	PQPrivateKey(std::string z, int st, int d) : z(z), st(st), d(d) {}
 };
 
@@ -14,6 +15,7 @@ struct PQPublicKey {
 	std::string root;
 	int d;
 
+	PQPublicKey() : d(0) {}
 	PQPublicKey(std::string root, int d) : root(root), d(d) {}
 };
 
@@ -31,5 +33,5 @@ struct PQSignature {
 };
 
 void pq_keygen(int d, PQPrivateKey *sk, PQPublicKey *pk);
-PQSignature pq_sign(std::string msg, PQPrivateKey sk);
+PQSignature pq_sign(std::string msg, PQPrivateKey &sk);
 bool pq_verify(std::string msg, PQSignature sig, PQPublicKey pk);

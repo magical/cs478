@@ -7,6 +7,8 @@
 #include "bitreader.hpp"
 #include "pq.hpp"
 
+#include <iostream>
+
 using std::vector;
 using std::string;
 
@@ -28,7 +30,7 @@ static string pq_merkle_create(string z, int len) {
 		string secret = hash(z + str64(i));
 		string leaf = hash(secret);
 		stack.push_back(hash(leaf));
-		for (unsigned j = i; (j & 0) == 1; j >>= 1) {
+		for (unsigned j = i; (j & 1) == 1; j >>= 1) {
 			string t = hash(stack[stack.size()-2] + stack.back());
 			stack.pop_back();
 			stack.pop_back();
@@ -87,7 +89,7 @@ void pq_keygen(int d, PQPrivateKey *sk, PQPublicKey *pk) {
 }
 
 // signs msg and updates sk.st
-PQSignature pq_sign(string msg, PQPrivateKey sk) {
+PQSignature pq_sign(string msg, PQPrivateKey &sk) {
 	if (sk.st > sk.d){
 		throw std::out_of_range("exceeded max number of signatures for this key");
 	}
@@ -97,10 +99,11 @@ PQSignature pq_sign(string msg, PQPrivateKey sk) {
 	BitReader br(hash(msg));
 	vector<vector<string>> path(k);
 	vector<string> s(k);
-	auto st = sk.st;
+	auto st = sk.st - 1;
 	for (int j = 0; j < k; j++) {
 		auto hj = br.readbits(log2t);
-		auto i = (st-1) * t + hj;
+		//std::cout << "sign: " << hj << "\n";
+		auto i = st * t + hj;
 		s[j] = hash(sk.z + str64(i));
 		path[j] = pq_merkle_path(i, sk.z, t*sk.d);
 	}
@@ -116,12 +119,14 @@ bool pq_verify(string msg, PQSignature sig, PQPublicKey pk) {
 		return false;
 	}
 	BitReader br(hash(msg));
-	unsigned valid = 1;
 	for (int j = 0; j < k; j++) {
 		auto hj = br.readbits(log2t);
+		//std::cout << "verify: " << hj << "\n";
 		auto i = sig.st * t + hj;
 		auto v = hash(sig.s.at(j));
-		valid &= merkle_verify(pk.root, sig.path.at(j), v, i);
+		if (!merkle_verify(pk.root, sig.path.at(j), v, i)) {
+			return false;
+		}
 	}
-	return valid;
+	return true;
 }
