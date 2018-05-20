@@ -14,7 +14,7 @@ using std::string;
 
 static void shs256_process_string(sha256 *sh, const string s) {
 	for (char c : s) {
-		shs_process(sh, (int)(unsigned char)c);
+		shs256_process(sh, (int)(unsigned char)c);
 	}
 }
 
