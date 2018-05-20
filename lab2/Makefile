@@ -1,5 +1,5 @@
 CXXFLAGS:=-Wall
-CXXFLAGS+=-std=c++11 -I../include -ggdb -O1
+CXXFLAGS+=-std=c++11 -I../include -ggdb -O2
 LDLIBS+=-lzmq ../lib/miracl.a
 all: main
 main: main.cc merkle.o hors.o pq.o crypto.o
