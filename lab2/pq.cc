@@ -96,7 +96,7 @@ PQSignature pq_sign(string msg, PQPrivateKey &sk) {
 	// split hash of message into pieces
 	// for each piece, do HORS on leaves t*(st-1)..t*st of the tree
 	// note: hash must be >= 320 bits
-	BitReader br(hash(msg));
+	BitReader br(hash384(msg));
 	vector<vector<string>> path(k);
 	vector<string> s(k);
 	auto st = sk.st - 1;
@@ -118,7 +118,7 @@ bool pq_verify(string msg, PQSignature sig, PQPublicKey pk) {
 	if (!ispoweroftwo(pk.d)) {
 		return false;
 	}
-	BitReader br(hash(msg));
+	BitReader br(hash384(msg));
 	for (int j = 0; j < k; j++) {
 		auto hj = br.readbits(log2t);
 		//std::cout << "verify: " << hj << "\n";

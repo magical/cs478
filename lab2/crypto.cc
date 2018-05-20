@@ -57,6 +57,17 @@ string hash(const string msg) {
 	return output;
 }
 
+string hash384(const string msg) {
+	string output(48, '0');
+	sha384 sh;
+	shs384_init(&sh);
+	for (char c : msg) {
+		shs384_process(&sh, (int)(unsigned char)c);
+	}
+	shs384_hash(&sh, &output[0]);
+	return output;
+}
+
 string hex(string s) {
 	std::stringstream out;
 	const char* hexdigits = "0123456789abcdef";
