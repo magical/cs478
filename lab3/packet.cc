@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <iostream>
 #include "packet.hpp"
 #include "crypto.hpp" // get64
 #include "rabin.hpp"
@@ -44,6 +45,7 @@ std::vector<string> read_string_vector(char* data, size_t size) {
 		pos += 8;
 		if (length <= size - pos) {
 			string m = string(data+pos, length);
+			//std::cout << hex(m) << "\n";
 			messages.push_back(m);
 			pos += length;
 		} else {

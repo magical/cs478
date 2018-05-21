@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <string>
+#include <iostream>
 #include <map>
 #include "crypto.hpp"
 

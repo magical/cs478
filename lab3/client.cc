@@ -1,8 +1,10 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <sstream>
 #include <unistd.h>
 #include <sys/auxv.h>
+#include <fstream>
 #include "zmq.hpp"
 #include "big.h"
 
@@ -36,11 +38,11 @@ void save_message(std::string msg) {
 	std::string iv;
 	auto msg_compressed = compress(msg);
 	auto msg_encrypted = encrypt(key, msg_compressed, &iv);
-	std::cout << "key:" << hex(key) << "\n";
-	std::cout << "ct:" << hex(msg_encrypted) << "\n";
-	std::cout << "cx:" << hex(msg_compressed) << "\n";
-	std::cout << "pt:" << hex(msg) << "\n";
-	std::cout << "de:" << hex(decompress(msg_compressed)) << "\n";
+	//std::cout << "key:" << hex(key) << "\n";
+	//std::cout << "ct:" << hex(msg_encrypted) << "\n";
+	//std::cout << "cx:" << hex(msg_compressed) << "\n";
+	//std::cout << "pt:" << hex(msg) << "\n";
+	//std::cout << "de:" << hex(decompress(msg_compressed)) << "\n";
 	msg_encrypted = iv + msg_encrypted;
 	auto sig = hmac(key, msg_encrypted);
 	hashchain = hash(hashchain + sig);
@@ -105,6 +107,23 @@ int main() {
 	}
 	strong_init(&rng, 16, (char*)auxrandom, 0);
 
+	string aaaa(64000, 'a');
+	string dict;
+	string jpeg;
+
+	{
+		std::ifstream f("/usr/share/dict/words");
+		std::stringstream ss;
+		ss << f.rdbuf();
+		dict = ss.str();
+	};
+	{
+		std::ifstream f("kitty.jpg");
+		std::stringstream ss;
+		ss << f.rdbuf();
+		jpeg = ss.str();
+	};
+
 	key.assign(reinterpret_cast<char*>(key_bytes), sizeof key_bytes);
 
 	zmq::context_t context;
@@ -136,10 +155,13 @@ int main() {
 			if (!std::cin) {
 				break;
 			}
-			std::cout << "got a message\n";
 			std::string line;
-			std::getline(std::cin, line);
-			save_message(line);
+			std::getline(std::cin, line, '\n');
+			std::cout << "got a message\n";
+			//save_message(line);
+			//save_message(aaaa);
+			save_message(dict);
+			//save_message(jpeg);
 		}
 
 		// when the collector arrives,
@@ -162,11 +184,13 @@ int main() {
 				}
 				std::string full_message;
 				write_string_vector(&full_message, bundle);
+				//std::cout << "sending message: " << hex(string((char*)full_message.data(), full_message.size())) << "\n";
 
 				std::vector<Packet> packets = split_message(full_message, RabinN, RabinT);
 				zmq::message_t msg;
 				for (const Packet &p : packets) {
 					write_packet(&msg, p);
+					//std::cout << "sending: " << hex(string((char*)msg.data(), msg.size())) << "\n";
 					pub.send(msg);
 					std::cout << "sent a packet\n";
 				}
