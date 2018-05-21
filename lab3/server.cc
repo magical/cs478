@@ -7,6 +7,7 @@
 #include "crypto.hpp"
 #include "compress.hpp"
 #include "packet.hpp"
+#include "clock.hpp"
 
 using std::string;
 
@@ -127,6 +128,7 @@ int main() {
 			}
 
 			if (packets.size() >= RabinN) {
+				auto t1 = Clock::now();
 				string reconstructed = reconstruct_packets(packets, RabinN);
 				std::cout << hex(reconstructed) << "\n";
 				Bundle b = read_bundle(&reconstructed[0], reconstructed.size());
@@ -139,9 +141,17 @@ int main() {
 					handle_messages(b);
 					//std::cout << hex(b.messages[0])<<"\n";
 					for (const string &r : b.messages) {
-						std::cout << r << "\n";
+						if (r.size() > 100000) {
+							std::cout << r.size() << "bytes, " << hex(r.substr(0, 30)) << "...\n";
+						} else if (r.size() > 50) {
+							std::cout << r.substr(0, 50) << "...\n";
+						} else {
+							std::cout << r << "\n";
+						}
 					}
 				}
+				auto t2 = Clock::now();
+				std::cout << "reconstruction + decryption took " << deltstr(t1, t2) << "\n";
 			}
 		}
 		sleep(1);

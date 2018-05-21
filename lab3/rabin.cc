@@ -19,7 +19,7 @@ void printmatrix(const vector<vector<Big>> &M);
 
 string bigtostring(const Big& v) {
 	string output(ChunkSize, '\0');
-	to_binary(v, output.size(), &output[0], FALSE);
+	to_binary(v, output.size(), &output[0], TRUE);
 	return output;
 }
 
