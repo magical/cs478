@@ -41,6 +41,7 @@ string decompress(const string &msg) {
 	size_t tree_length = get64(msg, 0);
 	auto nodes = read_node_list(msg.substr(8, tree_length));
 	Node *tree = build_tree(nodes);
+	//convert_tree(tree);
 	string output = decode_message(tree, msg.substr(8 + tree_length));
 	free_tree(tree);
 	return output;
@@ -262,6 +263,7 @@ codemap_t convert_tree(Node* tree) {
 
 void walk_node(Node* node, string prefix, codemap_t &codes) {
 	if (node->leaf) {
+		//std::cout << "codes[" << (node->value?string(1, node->value):"eof") << "] = " << prefix << ", " << node->count << "\n";
 		codes[node->value] = prefix;
 	} else {
 		walk_node(node->left, prefix + "0", codes);
