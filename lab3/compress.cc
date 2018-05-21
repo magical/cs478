@@ -57,15 +57,18 @@ std::vector<Node*> read_node_list(const string &msg) {
 	// etc
 	char value = 0;
 	int count = 0;
+	unsigned shift = 0;
 
 	for (char c : msg) {
 		if (state == 0) {
 			value = c;
 			count = 0;
+			shift = 0;
 			state++;
 		} else if (state == 1) {
 			unsigned x = uch(c);
-			count = (count << 7) + (x & 0x7f);
+			count = count + ((x & 0x7f) << shift);
+			shift += 7;
 			if (x >> 7) {
 				state = 0;
 
