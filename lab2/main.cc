@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <chrono>
+#include <getopt.h>
 
 #include "crypto.hpp"
 #include "hors.hpp"
@@ -24,13 +25,30 @@ string delt(Clock::time_point a, Clock::time_point b) {
 	return ss.str();
 }
 
-int main() {
+bool ispoweroftwo(int d) {
+	return d > 0 && (d & (d-1)) == 0;
+}
+
+int main(int argc, char**argv) {
+	int d = 8;
+	int opt;
+	while ((opt = getopt(argc, argv, "d:")) != -1) {
+		if (opt == 'd') {
+			d = atoi(optarg);
+		}
+	}
+
+	if (!ispoweroftwo(d)) {
+		std::cerr << "d must be power of two\n";
+		exit(1);
+	}
+
 	init_rng();
 	string msg = "hello there";
 	PQPrivateKey sk;
 	PQPublicKey pk;
 	auto t0 = Clock::now();
-	pq_keygen(16, &sk, &pk);
+	pq_keygen(d, &sk, &pk);
 	auto t1 = Clock::now();
 	auto sig0 = pq_sign(msg, sk);
 	auto t2 = Clock::now();
