@@ -8,6 +8,7 @@ extern "C" {
 }
 
 #include "puzzles.hpp"
+#include "clock.hpp"
 
 using std::string;
 
@@ -22,6 +23,9 @@ int main() {
 	zmq::socket_t socket(context, zmq::socket_type::req);
 	socket.connect("tcp://127.0.0.1:7000");
 
+	int nrequests = 0;
+
+	auto t0 = Clock::now();
 	for (;;) {
 		string line;
 		std::getline(std::cin, line);
@@ -63,8 +67,11 @@ int main() {
 		std::cout << hex(puz.goal) << "\n";
 		std::cout << puz.bits << "\n";
 
+		auto t2 = Clock::now();
 		string solution = solve(puz);
+		auto t3 = Clock::now();
 		std::cout << hex(solve(puz)) << "\n";
+		std::cout << "solving took "<<deltstr(t2, t3)<<"\n";
 
 		puz.puzzle = solution;
 
@@ -78,7 +85,13 @@ int main() {
 
 		socket.send(msg);
 		socket.recv(&resp);
+
+		nrequests++;
 	}
+
+	auto t1 = Clock::now();
+	printf("made %d requests in %s\n", nrequests, deltstr(t0, t1).c_str());
+	printf("requests per second = %f", nrequests * 1e9 / delta(t0, t1));
 
 	return 0;
 }

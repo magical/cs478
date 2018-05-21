@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <unistd.h>
 #include "zmq.hpp"
 
 extern "C" {
@@ -10,7 +11,6 @@ extern "C" {
 
 using std::string;
 
-const int NBITS = 8;
 zmq::message_t empty;
 
 std::string tostring(uint64_t t) {
@@ -26,7 +26,7 @@ std::string tostring(uint64_t t) {
 	return s;
 }
 
-Puzzle genpuzzle(string secret, time_t t, string msg) {
+Puzzle genpuzzle(string secret, time_t t, string msg, int strength) {
 	Puzzle puz;
 
 	// generate puzzle
@@ -43,10 +43,10 @@ Puzzle genpuzzle(string secret, time_t t, string msg) {
 	puz.goal = hash(output);
 
 	// clear low bits
-	setbits(puz.puzzle, 0, NBITS);
+	setbits(puz.puzzle, 0, strength);
 
 	puz.t = t;
-	puz.bits = NBITS;
+	puz.bits = strength;
 
 	return puz;
 }
@@ -75,12 +75,20 @@ string ztostring(zmq::message_t &zmsg) {
 }
 
 
-int main() {
+int main(int argc, char** argv) {
+	int strength = 16;
+	string secret = "server secret";
+
+	int opt;
+	while ((opt = getopt(argc, argv, "n:")) != -1) {
+		if (opt == 'n') {
+			strength = atoi(optarg);
+		}
+	}
+
 	zmq::context_t context;
 	zmq::socket_t socket(context, zmq::socket_type::rep);
 	socket.bind("tcp://127.0.0.1:7000");
-
-	string secret = "client secret";
 
 	for (;;) {
 		zmq::message_t req;
@@ -113,7 +121,7 @@ int main() {
 			// generate puzzle
 			time_t t = time(NULL);
 			string message = s.substr(1);
-			Puzzle puz = genpuzzle(secret, t, message);
+			Puzzle puz = genpuzzle(secret, t, message, strength);
 
 			// 1 | puzzle | goal | t | nbits
 			zmq::message_t resp(MESSAGE_LENGTH);
