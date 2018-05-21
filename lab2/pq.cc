@@ -43,15 +43,13 @@ static string pq_merkle_create(string z, int len) {
 
 // Returns the path to node at index v
 // where the leaves of the tree are generated from a seed value
-static vector<string> pq_merkle_path(int v, string z, int len) {
+static vector<string> pq_merkle_path(int v, const vector<string> &leaf_hashes, int len) {
 	assert(ispoweroftwo(len));
 	vector <string> stack;
 	vector <string> path;
 	int level = 0;
 	for (int i = 0; i < len; i++) {
-		string secret = hash(z + str64(i));
-		string leaf = hash(secret);
-		stack.push_back(hash(leaf));
+		stack.push_back(leaf_hashes[i]);
 
 		if (v == i) {
 			level = stack.size();
@@ -100,12 +98,22 @@ PQSignature pq_sign(string msg, PQPrivateKey &sk) {
 	vector<vector<string>> path(k);
 	vector<string> s(k);
 	auto st = sk.st - 1;
+
+	// precompute hashed merkle leaves to speed up repeated path operations
+	vector<string> leaf_hashes;
+	const int len = t*sk.d;
+	for (int i = 0; i < len; i++) {
+		string secret = hash(sk.z + str64(i));
+		string leaf = hash(secret);
+		leaf_hashes.push_back(hash(leaf));
+	}
+
 	for (int j = 0; j < k; j++) {
 		auto hj = br.readbits(log2t);
 		//std::cout << "sign: " << hj << "\n";
 		auto i = st * t + hj;
 		s[j] = hash(sk.z + str64(i));
-		path[j] = pq_merkle_path(i, sk.z, t*sk.d);
+		path[j] = pq_merkle_path(i, leaf_hashes, t*sk.d);
 	}
 	sk.st++;
 	return PQSignature(path, s, st);
